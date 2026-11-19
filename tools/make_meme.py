@@ -74,11 +74,15 @@ def draw_coin(d, cx, cy, r):
     d.polygon(star_points(cx, cy, r * 0.58, r * 0.24), fill=WHITE)
 
 
-def make_ghost(height, cap=False, tie=False, shades_up=False, mood="smile"):
-    """Render the ghost once, supersampled, and return an RGBA image.
+def make_ghost(height):
+    """Render THE ghost, supersampled, and return an RGBA image.
 
-    The design never changes between panels -- only the accessories and the
-    mouth do -- which is what makes the four panels read as one character.
+    Design note (second-opinion consult, applied): the ghost's design is
+    byte-identical in all four panels -- same body, same sparkle eyes, same
+    smile -- and every panel calls this with the same height. The ghost is
+    never aged, shrunk, dressed up or given a new expression; the years pass
+    only through the props and the setting around it (backpack, school
+    books, coffee and office, game case and beach).
     """
     ss = 3
     h = int(height * ss)
@@ -87,8 +91,6 @@ def make_ghost(height, cap=False, tie=False, shades_up=False, mood="smile"):
     d = ImageDraw.Draw(img)
     lw = max(3, int(0.030 * h))
 
-    # Backpack strap hint behind the body (kid panel uses the cap instead,
-    # but a side satchel block keeps the silhouette playful at small size).
     pad = lw * 2
     left, right = pad, w - pad
     dome_cy = pad + (right - left) / 2
@@ -117,43 +119,10 @@ def make_ghost(height, cap=False, tie=False, shades_up=False, mood="smile"):
     for ex in (int(0.36 * w), int(0.64 * w)):
         d.polygon(sparkle_points(ex, eye_y, eye_r), fill=BLACK)
 
-    # Mouth: the only expression that changes as the years drag on.
+    # Mouth: one gentle smile, the same in every panel.
     mx, my = w // 2, int(0.56 * h)
     mw = int(0.10 * w)
-    if mood == "wow":                        # 2013: small round 'o'
-        d.ellipse([mx - mw // 2, my - mw // 2, mx + mw // 2, my + mw // 2],
-                  outline=BLACK, width=lw)
-    elif mood == "flat":                     # 2023: deadpan office line
-        d.line([mx - mw, my, mx + mw, my], fill=BLACK, width=lw)
-    elif mood == "grin":                     # 2026: finally!
-        d.pieslice([mx - mw, my - mw, mx + mw, my + mw], 0, 180,
-                   fill=BLACK, outline=BLACK, width=lw)
-    else:                                    # gentle smile
-        d.arc([mx - mw, my - mw, mx + mw, my + mw], 15, 165, fill=BLACK, width=lw)
-
-    if tie:
-        tx, ty = w // 2, int(0.66 * h)
-        d.polygon([(tx - int(0.05 * w), ty), (tx + int(0.05 * w), ty),
-                   (tx, ty + int(0.16 * h))], fill=MAGENTA, outline=BLACK, width=max(2, lw // 2))
-    if cap:
-        # A kid's cap: magenta half-dome on the head plus a brim.
-        d.pieslice([left + int(0.06 * w), pad - int(0.01 * h),
-                    right - int(0.06 * w), dome_cy + int(0.10 * h)],
-                   180, 360, fill=MAGENTA, outline=BLACK, width=lw)
-        # No side brim (it read as a stray bar across the face) -- just a
-        # little button on top of the cap.
-        bx, by = w // 2, pad + int(0.012 * h)
-        br = int(0.035 * w)
-        d.ellipse([bx - br, by - br, bx + br, by + br], fill=MAGENTA,
-                  outline=BLACK, width=max(2, lw // 2))
-    if shades_up:
-        # Sunglasses pushed up on the forehead -- sparkle eyes stay visible.
-        sy = int(0.20 * h)
-        for cx in (int(0.36 * w), int(0.64 * w)):
-            d.rounded_rectangle([cx - int(0.11 * w), sy - int(0.045 * h),
-                                 cx + int(0.11 * w), sy + int(0.045 * h)],
-                                radius=int(0.03 * h), fill=BLACK)
-        d.line([int(0.47 * w), sy, int(0.53 * w), sy], fill=BLACK, width=lw)
+    d.arc([mx - mw, my - mw, mx + mw, my + mw], 15, 165, fill=BLACK, width=lw)
 
     img = img.resize((int(height * 0.80), int(height)), Image.LANCZOS)
     return img
@@ -185,7 +154,7 @@ def year_label(panel, year, tag, tag_fill=(20, 20, 24)):
 
 
 def panel_2013():
-    """2013 -- kid ghost in a bedroom, GTA V poster on the wall, coin raised."""
+    """2013 -- bedroom, GTA V poster on the wall, backpack, coin raised."""
     p = Image.new("RGB", (PANEL_W, PANEL_H), (43, 52, 96))
     d = ImageDraw.Draw(p)
     d.rectangle([0, PANEL_H - 92, PANEL_W, PANEL_H], fill=(24, 26, 44))  # floor
@@ -203,11 +172,19 @@ def panel_2013():
     d.rounded_rectangle([352, 384, 528, 442], radius=12, fill=(150, 60, 90))
     d.rounded_rectangle([360, 364, 440, 398], radius=10, fill=WHITE)
 
-    ghost = make_ghost(286, cap=True, mood="wow")
-    paste_ghost(p, ghost, 238, 438)
+    # The 2013 prop: a school backpack standing on the floor beside the
+    # ghost (the ghost itself is NOT dressed up or shrunk -- same ghost).
+    d.rounded_rectangle([40, 306, 128, 424], radius=16, fill=(64, 110, 200),
+                        outline=BLACK, width=5)
+    d.rounded_rectangle([58, 344, 110, 396], radius=10, fill=MAGENTA,
+                        outline=BLACK, width=4)
+    d.arc([52, 282, 116, 330], 180, 360, fill=BLACK, width=6)
+
+    ghost = make_ghost(300)
+    paste_ghost(p, ghost, 264, 440)
     # Raised little hand + the coin, held up hopefully.
-    draw_hand(p, 356, 208, 21)
-    draw_coin(d, 392, 168, 44)
+    draw_hand(p, 382, 206, 21)
+    draw_coin(d, 420, 162, 46)
     year_label(p, "2013", "DAY ONE BELIEVER")
     return p
 
@@ -222,8 +199,8 @@ def panel_2018():
     d.text((406, 132), "GTA 6", font=font(36), anchor="mm", fill=(235, 235, 220))
     d.text((406, 178), "when??", font=font(30), anchor="mm", fill=(235, 235, 220))
 
-    ghost = make_ghost(272, mood="smile")
-    paste_ghost(p, ghost, 252, 392)
+    ghost = make_ghost(300)
+    paste_ghost(p, ghost, 252, 398)
 
     # Desk across the bottom, drawn over the ghost's base.
     d.rectangle([0, 348, PANEL_W, PANEL_H], fill=(122, 82, 48))
@@ -234,9 +211,10 @@ def panel_2018():
         y = 348 - 26 * (i + 1)
         d.rounded_rectangle([36, y, 36 + bw, y + 24], radius=4, fill=col,
                             outline=BLACK, width=3)
-    # The coin waits on the desk, right by the ghost's hand.
-    draw_hand(p, 368, 344, 19)
-    draw_coin(d, 424, 330, 40)
+    # The coin waits on the desk, right by the ghost's hand -- same big
+    # coin as every other panel (radius 46 everywhere).
+    draw_hand(p, 380, 342, 21)
+    draw_coin(d, 434, 326, 46)
     year_label(p, "2018", "STILL WAITING...")
     return p
 
@@ -259,8 +237,8 @@ def panel_2023():
     d.line([44, 146, 164, 224], fill=(196, 60, 60), width=4)
     d.line([164, 146, 44, 224], fill=(196, 60, 60), width=4)
 
-    ghost = make_ghost(278, tie=True, mood="flat")
-    paste_ghost(p, ghost, 226, 398)
+    ghost = make_ghost(300)
+    paste_ghost(p, ghost, 240, 400)
 
     # Office desk across the bottom.
     d.rectangle([0, 352, PANEL_W, PANEL_H], fill=(58, 60, 70))
@@ -277,8 +255,8 @@ def panel_2023():
             d.rounded_rectangle([164 + c * 28, 392 + r * 16, 184 + c * 28, 402 + r * 16],
                                 radius=2, fill=(90, 92, 104))
     # The coin, patient as ever, right beside the keyboard.
-    draw_hand(p, 404, 362, 19)
-    draw_coin(d, 452, 344, 40)
+    draw_hand(p, 388, 360, 21)
+    draw_coin(d, 442, 340, 46)
     year_label(p, "2023", "STILL WAITING...")
     return p
 
@@ -331,12 +309,12 @@ def panel_2026():
     palm(d, 30, 452, 1.25, 1)
     palm(d, 516, 446, 1.15, -1)
 
-    ghost = make_ghost(292, shades_up=True, mood="grin")
+    ghost = make_ghost(300)
     paste_ghost(p, ghost, 270, 442)
 
     # Coin raised high in the left hand -- it waited too.
-    draw_hand(p, 148, 206, 21)
-    draw_coin(d, 112, 158, 46)
+    draw_hand(p, 140, 208, 21)
+    draw_coin(d, 102, 160, 46)
     # ...and finally, the game itself, raised in the right hand.
     case = make_game_case()
     p.paste(case, (382, 96), case)

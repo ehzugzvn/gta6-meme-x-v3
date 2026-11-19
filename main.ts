@@ -1,25 +1,66 @@
-// A working gta6-meme-x-01 entry (Node 22, standard library only): it copies POST.json from the repository root to
-// /output/POST.json, where the gate reads it. That is all the program has to do. The entry is the post itself: your
-// agent makes a GTA 6 meme, it is posted on X from a public account with make.fun (a link or written out) and/or a
-// tag of @makefunai and your play code in its text, POST.json names the post, and the house reads the post from X (its
-// first picture and its text) and hands that to the judge. Nothing this program writes about the post is judged.
+// gta6-meme-x-01 entry v3 -- "13 Years. The Coin Waited Too -- GTA 6".
 //
-// The POST.json this starter ships holds a placeholder address, so the gate refuses it as it stands (valid 0).
-// Replace it with your post's address before you submit.
+// The entry itself is the X post: a 2x2 timeline meme (2013 -> 2026, the same
+// make.fun ghost and its magenta coin in every panel) plus the post text in
+// post.txt. This program's whole job is to hand the post's address to the
+// gate: it copies POST.json from the bot directory to the output directory.
 //
-// Outside the grader's container, MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR stand in for /bot and /output:
+// Node 22, standard library only. Deterministic: no network, no clock.
+//
+// Outside the grader's container, MAKEFUN_BOT_DIR and MAKEFUN_OUTPUT_DIR
+// stand in for /bot and /output:
 //   mkdir -p out && MAKEFUN_BOT_DIR=. MAKEFUN_OUTPUT_DIR=out node main.ts
 
-import { copyFileSync, mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { copyFileSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 
-const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? '/bot';
-const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const BOT_DIR = process.env.MAKEFUN_BOT_DIR ?? "/bot";
+const OUTPUT_DIR = process.env.MAKEFUN_OUTPUT_DIR ?? "/output";
 
-mkdirSync(OUTPUT_DIR, { recursive: true });
-try {
-  copyFileSync(join(BOT_DIR, 'POST.json'), join(OUTPUT_DIR, 'POST.json'));
-} catch (err) {
-  console.error(`POST.json could not be copied from ${BOT_DIR}: ${(err as Error).message}`);
+const SOURCE = join(BOT_DIR, "POST.json");
+const TARGET = join(OUTPUT_DIR, "POST.json");
+
+function fail(message: string): never {
+  console.error(`main.ts: ${message}`);
   process.exit(1);
 }
+
+// Read and validate POST.json before copying anything: it must parse as
+// JSON and carry the post address in a string `url` field.
+let raw: string;
+try {
+  raw = readFileSync(SOURCE, "utf8");
+} catch (err) {
+  fail(`cannot read ${SOURCE}: ${(err as Error).message}`);
+}
+
+let post: unknown;
+try {
+  post = JSON.parse(raw!);
+} catch (err) {
+  fail(`POST.json is not valid JSON: ${(err as Error).message}`);
+}
+
+if (
+  typeof post !== "object" ||
+  post === null ||
+  typeof (post as { url?: unknown }).url !== "string" ||
+  (post as { url: string }).url.length === 0
+) {
+  fail("POST.json must be a JSON object with a non-empty string `url`.");
+}
+
+// The post checks out -- copy it, byte for byte, to the output directory,
+// then read the copy back and confirm it survived the trip intact.
+try {
+  mkdirSync(OUTPUT_DIR, { recursive: true });
+  copyFileSync(SOURCE, TARGET);
+  if (readFileSync(TARGET, "utf8") !== raw!) {
+    fail(`copied POST.json at ${TARGET} does not match the source.`);
+  }
+} catch (err) {
+  if ((err as Error).message.startsWith("copied POST.json")) throw err;
+  fail(`could not copy POST.json to ${TARGET}: ${(err as Error).message}`);
+}
+
+console.log(`main.ts: copied POST.json -> ${TARGET}`);
